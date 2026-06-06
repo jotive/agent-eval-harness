@@ -26,13 +26,13 @@ pip install -e ".[dev]"
 
 ```bash
 # Eval the built-in demo agent against the example dataset
-eval run --dataset datasets/example.yaml
+agent-eval run --dataset datasets/example.yaml
 
 # Eval your own agent (a "module:factory" returning an async callable)
-eval run --dataset datasets/example.yaml --agent mypkg.agent:make_agent --out report.json
+agent-eval run --dataset datasets/example.yaml --agent mypkg.agent:make_agent --out report.json
 
 # Gate against a baseline (non-zero exit on regression)
-eval run --dataset datasets/example.yaml --baseline baselines/main.json --max-drop 0.0
+agent-eval run --dataset datasets/example.yaml --baseline baselines/main.json --max-drop 0.0
 ```
 
 Your agent is any `module:factory` where the factory returns an async callable `(EvalCase) -> AgentTrace`. The trace reports the output, tool calls, step count, cost, and latency. See `src/app/core/agent.py` for the `DemoAgent` reference implementation and the `AgentUnderTest` protocol.
@@ -50,7 +50,7 @@ Python 3.12 · Pydantic v2 · OpenAI SDK · jsonschema · typer + rich CLI · py
 | Repo scaffold | ✅ |
 | ADR-001 — judge model selection + locking | ✅ |
 | ADR-002 — dataset format + versioning | ✅ |
-| Runner CLI: `eval run --dataset X --agent Y` | ✅ |
+| Runner CLI: `agent-eval run --dataset X --agent Y` | ✅ |
 | Built-in checks: tool call assertions, output schema, budgets | ✅ |
 | LLM-as-judge with confidence threshold | ✅ |
 | CI integration with regression detection | ✅ |

@@ -22,7 +22,7 @@ dev = [
 ]
 
 [project.scripts]
-eval = "app.cli:app"
+agent-eval = "app.cli:app"
 
 [build-system]
 requires = ["hatchling"]

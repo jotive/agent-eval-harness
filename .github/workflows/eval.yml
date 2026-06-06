@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   unit:
@@ -17,10 +18,12 @@ jobs:
       - run: ruff check src tests
       - run: pytest -q
 
+  # Live regression gate. Needs an OPENAI_API_KEY secret and a committed
+  # baseline (baselines/main.json, created with `agent-eval run --out ...`).
+  # Manual trigger so the public repo's push CI stays green without a key.
   eval-gate:
     runs-on: ubuntu-latest
-    # Live eval needs an API key. Runs only when the secret is present (e.g. main, not forks).
-    if: ${{ github.event_name == 'push' }}
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -31,7 +34,7 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          eval run \
+          agent-eval run \
             --dataset datasets/example.yaml \
             --out report.json \
             --baseline baselines/main.json \
