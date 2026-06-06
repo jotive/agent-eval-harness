@@ -1,0 +1,43 @@
+name: agent-eval
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: ruff check src tests
+      - run: pytest -q
+
+  eval-gate:
+    runs-on: ubuntu-latest
+    # Live eval needs an API key. Runs only when the secret is present (e.g. main, not forks).
+    if: ${{ github.event_name == 'push' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - name: Run eval against baseline (fails on regression)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          eval run \
+            --dataset datasets/example.yaml \
+            --out report.json \
+            --baseline baselines/main.json \
+            --max-drop 0.0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-report
+          path: report.json
