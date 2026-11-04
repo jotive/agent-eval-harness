@@ -26,6 +26,35 @@ Return ONLY JSON: {"score": <float 0..1>, "confidence": <float 0..1>, "reason": 
 score = how well the contract is met. confidence = how sure you are in this judgment."""
 
 
+class JudgeError(ValueError):
+    pass
+
+
+def _unit_interval(data: dict, key: str) -> float:
+    value = data.get(key, 0.0)
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        raise JudgeError(f"judge field '{key}' is not numeric: {value!r}")
+    try:
+        number = float(value)
+    except ValueError as exc:
+        raise JudgeError(f"judge field '{key}' is not numeric: {value!r}") from exc
+    if not 0.0 <= number <= 1.0:
+        raise JudgeError(f"judge field '{key}' out of range 0..1: {number}")
+    return number
+
+
+def parse_verdict(content: str | None) -> tuple[float, float, str]:
+    if not content:
+        raise JudgeError("judge returned empty content")
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError as exc:
+        raise JudgeError(f"judge returned invalid JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise JudgeError("judge JSON is not an object")
+    return _unit_interval(data, "score"), _unit_interval(data, "confidence"), str(data.get("reason", ""))
+
+
 class Judge:
     def __init__(self, model: str = "gpt-4o-mini", threshold: float = 0.7, min_confidence: float = 0.6) -> None:
         self.model = model
@@ -48,9 +77,7 @@ class Judge:
                 {"role": "user", "content": user},
             ],
         )
-        data = json.loads(resp.choices[0].message.content)
-        score = float(data.get("score", 0.0))
-        confidence = float(data.get("confidence", 0.0))
+        score, confidence, reason = parse_verdict(resp.choices[0].message.content)
 
         usage = resp.usage
         judge_cost = cost_usd(self.model, usage.prompt_tokens, usage.completion_tokens) if usage else 0.0
@@ -61,7 +88,7 @@ class Judge:
             score=score,
             confidence=confidence,
             version=JUDGE_PROMPT_VERSION,
-            reason=data.get("reason", ""),
+            reason=reason,
         )
         return score, confidence, judge_cost
 

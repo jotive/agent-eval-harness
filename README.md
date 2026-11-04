@@ -39,9 +39,29 @@ Your agent is any `module:factory` where the factory returns an async callable `
 
 The judge needs `OPENAI_API_KEY`. Cases with only deterministic checks run without any API key.
 
+## Adding a dataset
+
+1. Create `datasets/<name>.yaml`. Either a top-level `cases:` list or a bare list works.
+2. Give every case a unique, stable `id` (duplicates fail at load; renaming an `id` resets its regression history) and an `input`.
+3. Describe the behavior contract under `expect`. Use any combination of:
+   - `tools`: list of `{name, args_subset}`
+   - `contains` / `not_contains`: case-insensitive substrings
+   - `output_schema`: JSON Schema the output must satisfy
+   - `judge`: natural-language contract scored by the LLM judge
+   - `max_steps`, `max_cost_usd`, `max_latency_ms`
+4. Prefer deterministic checks where possible and add `judge` only for soft dimensions.
+5. Validate and run it:
+
+```bash
+pytest tests/test_dataset.py
+agent-eval run --dataset datasets/<name>.yaml --out report.json
+```
+
+`tests/test_dataset.py` loads every `datasets/*.yaml`, so a malformed dataset fails CI. Commit a report as `baselines/<name>.json` to gate regressions. See `datasets/support-triage.yaml` for a complete example and `adr/ADR-002-dataset-format.md` for the format rationale.
+
 ## Stack
 
-Python 3.12 · Pydantic v2 · OpenAI SDK · jsonschema · typer + rich CLI · pytest · GitHub Actions for CI. The unit tests are deterministic and make no API calls.
+Python 3.12+ (CI runs 3.12 and 3.13) · Pydantic v2 · OpenAI SDK · jsonschema · typer + rich CLI · pytest · GitHub Actions for CI. The unit tests are deterministic and make no API calls.
 
 ## Roadmap
 
@@ -54,6 +74,7 @@ Python 3.12 · Pydantic v2 · OpenAI SDK · jsonschema · typer + rich CLI · py
 | Built-in checks: tool call assertions, output schema, budgets | ✅ |
 | LLM-as-judge with confidence threshold | ✅ |
 | CI integration with regression detection | ✅ |
+| ADR-003 — judge reliability: strict verdict parsing and fail-closed runs | ✅ |
 | Human-labeled meta-set for judge calibration | ⬜ |
 | Langfuse / OTEL trace export | ⬜ |
 

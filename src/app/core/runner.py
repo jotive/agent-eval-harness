@@ -27,7 +27,17 @@ async def _run_case(case: EvalCase, agent: AgentUnderTest, judge: Judge | None) 
     judge_score = judge_conf = None
     judge_ok = True
     if case.expect.judge and judge is not None:
-        judge_score, judge_conf, judge_cost = await judge.score(case, trace)
+        try:
+            judge_score, judge_conf, judge_cost = await judge.score(case, trace)
+        except Exception as exc:
+            logger.warning("judge_error", case=case.id, error=str(exc))
+            return CaseResult(
+                case_id=case.id,
+                passed=False,
+                checks=checks,
+                trace=trace,
+                error=f"judge failed: {exc}",
+            )
         trace.cost_usd += judge_cost
         judge_ok = judge.passed(judge_score, judge_conf)
 
